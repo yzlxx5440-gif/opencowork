@@ -59,6 +59,10 @@ jobs:
             arch_name: Apple-Silicon
           - os: ubuntu-latest
             platform: linux
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
+            arch_name: ARM64
 
     steps:
       -
@@ -86,9 +90,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx tsc
-          npx vite build
-          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+          # For linux arm64 builds we run electron-builder inside the official builder Docker image
+          if [[ "${{ matrix.platform }}" == "linux" && "${{ matrix.arch }}" == "arm64" ]]; then
+            docker run --rm -e DISPLAY -v "${{ github.workspace }}":/project -w /project electronuserland/builder:24 /bin/bash -lc "npm ci && npx tsc && npx vite build && npx electron-builder --linux --arm64 --publish never"
+          else
+            npx tsc
+            npx vite build
+            npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+          fi
 
       -
         name: Rename artifacts for Mac
