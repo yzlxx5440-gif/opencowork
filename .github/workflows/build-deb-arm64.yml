@@ -1,0 +1,44 @@
+name: Build Linux arm64 .deb
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-deb-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Build .deb (arm64) inside electronuserland/builder Docker
+        env:
+          CI: 'true'
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/project \
+            -w /project \
+            electronuserland/builder:latest \
+            /bin/bash -lc "npm ci && npm run build -- --linux deb --arm64 --publish never"
+
+      - name: Upload built .deb artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-arm64
+          path: release/**/*.deb
